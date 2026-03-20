@@ -7,6 +7,7 @@ import type { InboundPlantCase } from "@/lib/types";
 import { checkRateLimit } from "@/lib/services/rate-limit";
 import { enqueueDiagnosisJob } from "@/lib/services/queue";
 import { processDiagnosisCase } from "@/lib/services/processor";
+import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams;
@@ -30,7 +31,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = JSON.parse(rawBody);
-  await archiveWebhookEvent({ provider: "meta", eventType: "webhook", payload: body });
+  try {
+    await archiveWebhookEvent({ provider: "meta", eventType: "webhook", payload: body });
+  } catch (error) {
+    log("warn", "Webhook archive failed", { errorMessage: error instanceof Error ? error.message : "Unknown error" });
+  }
 
   const inbound = extractInboundImage(body);
   if (!inbound) {
@@ -84,16 +89,30 @@ async function hydrateMetaImage(inbound: InboundPlantCase): Promise<InboundPlant
 
   const media = await getMetaMediaUrl(inbound.providerMediaId);
   const bytes = await downloadMetaMedia(media.url);
-  const stored = await storeInboundImage({
-    messageId: inbound.messageId,
-    mimeType: media.mime_type ?? inbound.imageMimeType,
-    bytes
-  });
 
-  return {
-    ...inbound,
-    imageUrl: media.url,
-    imageMimeType: media.mime_type ?? inbound.imageMimeType,
-    imageStoragePath: stored.path
-  };
+  try {
+    const stored = await storeInboundImage({
+      messageId: inbound.messageId,
+      mimeType: media.mime_type ?? inbound.imageMimeType,
+      bytes
+    });
+
+    return {
+      ...inbound,
+      imageUrl: media.url,
+      imageMimeType: media.mime_type ?? inbound.imageMimeType,
+      imageStoragePath: stored.path
+    };
+  } catch (error) {
+    log("warn", "Image storage failed; continuing without persistence", {
+      messageId: inbound.messageId,
+      errorMessage: error instanceof Error ? error.message : "Unknown error"
+    });
+
+    return {
+      ...inbound,
+      imageUrl: media.url,
+      imageMimeType: media.mime_type ?? inbound.imageMimeType
+    };
+  }
 }
