@@ -165,6 +165,14 @@ Use Supabase SQL editor or local Postgres:
 - expose `/api/webhooks/whatsapp`
 - point Meta webhook to `https://your-domain/api/webhooks/whatsapp`
 
+### Netlify
+- use the included `netlify.toml`
+- build command: `npm run build`
+- install the Next.js Netlify runtime/plugin
+- set all required environment variables
+- set `APP_BASE_URL` to your Netlify site URL
+- schedule external cron calls to `/api/internal/queue/process` if needed
+
 ### Railway / Render
 - deploy as a web service
 - connect Postgres / Supabase

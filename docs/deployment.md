@@ -95,3 +95,26 @@ If you host outside Vercel, schedule a cron job that POSTs to:
 - `/api/internal/queue/process`
 with header:
 - `x-queue-secret: <QUEUE_SECRET>`
+
+For Netlify specifically, common options are:
+- Netlify Scheduled Functions wrapper
+- GitHub Actions cron
+- UptimeRobot / cron-job.org / EasyCron
+CRET" \
+  https://your-domain/api/internal/queue/process
+```
+
+## Railway / Render notes
+
+The app now supports simple retry/backoff inside `job_queue` using `run_after`, `QUEUE_MAX_ATTEMPTS`, and `QUEUE_RETRY_BASE_MS`.
+
+
+You can also deploy the app to Railway or Render using the included config files.
+
+- Railway: uses `railway.json`
+- Render: uses `render.yaml`
+
+If you host outside Vercel, schedule a cron job that POSTs to:
+- `/api/internal/queue/process`
+with header:
+- `x-queue-secret: <QUEUE_SECRET>`
