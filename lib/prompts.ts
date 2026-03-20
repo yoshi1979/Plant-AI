@@ -39,5 +39,6 @@ Rules:
 - Use conflicting if sources materially disagree.
 - Use partial or weak when evidence is incomplete.
 - Keep recommendations practical and conservative.
+- Prefer the issue candidate with the strongest live source support, not just the highest initial model guess.
 - Ask follow-up questions if confidence should remain below 7.`;
 }

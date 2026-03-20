@@ -12,7 +12,12 @@ export function scoreFinalConfidence(result: DiagnosisResult): number {
     conflicting: -2,
     unavailable: -2
   }[result.expert_validation.validation_strength];
+  const secondOpinionBonus = {
+    high: 1,
+    medium: 0,
+    low: -1
+  }[result.second_opinion?.agreement_with_primary ?? "medium"];
 
-  const raw = Math.round((plant + health + issue) / 3 + validationBonus - imagePenalty);
+  const raw = Math.round((plant + health + issue) / 3 + validationBonus + secondOpinionBonus - imagePenalty);
   return Math.max(1, Math.min(10, raw));
 }

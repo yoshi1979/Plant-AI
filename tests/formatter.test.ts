@@ -12,7 +12,10 @@ describe("formatWhatsAppReply", () => {
         performed: true,
         validation_strength: "strong",
         source_types_used: ["university extension"],
-        summary: "Cross-check was strong."
+        summary: "Cross-check was strong.",
+        freshness: "live",
+        checked_at: "2026-03-20T11:00:00.000Z",
+        winning_issue: "Overwatering"
       },
       recommended_actions: [{ priority: 1, action: "Let soil dry slightly.", why: "Excess moisture." }],
       prevention_tips: ["Use drainage holes."],
@@ -20,6 +23,7 @@ describe("formatWhatsAppReply", () => {
       escalation_needed: false,
       escalation_reason: "",
       image_quality: { usable: true, issues: [] },
+      second_opinion: { provider: "plantid", checked_at: "2026-03-20T11:00:00.000Z", issue_candidates: [{ name: "Overwatering", confidence: 8 }], agreement_with_primary: "high", summary: "Plant model agrees." },
       final_confidence_score_1_to_10: 8
     });
 

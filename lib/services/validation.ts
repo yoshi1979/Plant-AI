@@ -13,20 +13,37 @@ const trustedDomains = [
 ];
 
 type ValidationSource = { title: string; url: string; sourceType: string; snippet: string };
+type CandidateValidation = {
+  issue: { name: string; confidence: number; reasoning: string };
+  sources: ValidationSource[];
+  validationStrength: ValidationStrength;
+  score: number;
+};
 
 export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResult): Promise<DiagnosisResult> {
-  const primaryIssue = draft.likely_issues[0]?.name ?? "unclear plant stress";
-  const query = buildQuery(draft.plant_identification.name, primaryIssue, draft.observed_symptoms);
-  const sources = await searchTrustedSources(query);
+  const checkedAt = new Date().toISOString();
+  const candidates = await Promise.all(
+    draft.likely_issues.slice(0, 4).map(async (issue) => {
+      const query = buildQuery(draft.plant_identification.name, issue.name, draft.observed_symptoms);
+      const sources = await searchTrustedSources(query);
+      const validationStrength = inferValidationStrengthFromCandidate(issue.confidence, sources.length);
+      const score = scoreCandidate(issue.confidence, validationStrength, sources.length);
+      return { issue, sources, validationStrength, score } satisfies CandidateValidation;
+    })
+  );
 
-  if (!sources.length) {
+  const best = candidates.sort((a, b) => b.score - a.score)[0];
+
+  if (!best || !best.sources.length) {
     return {
       ...draft,
       expert_validation: {
         performed: true,
         validation_strength: "unavailable",
         source_types_used: [],
-        summary: "Trusted-source validation was unavailable, so recommendations stay conservative."
+        summary: "Trusted-source live validation was unavailable, so recommendations stay conservative and fresh guidance could not be confirmed.",
+        checked_at: checkedAt,
+        freshness: "unknown"
       },
       recommended_actions: conservativeActions(),
       prevention_tips: conservativePrevention(),
@@ -35,25 +52,30 @@ export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResu
   }
 
   const aiValidated = config.aiApiKey
-    ? await synthesizeValidationWithModel(draft, sources)
+    ? await synthesizeValidationWithModel({ ...draft, likely_issues: [best.issue, ...draft.likely_issues.filter((x) => x.name !== best.issue.name)] }, best.sources)
     : null;
 
-  const validationStrength = aiValidated?.validation_strength ?? inferValidationStrength(draft, sources);
+  const winningIssue = best.issue.name;
+  const validationStrength = aiValidated?.validation_strength ?? best.validationStrength;
   const recommendedActions = aiValidated?.recommended_actions ?? conservativeActions();
   const preventionTips = aiValidated?.prevention_tips ?? conservativePrevention();
   const followUpQuestions = aiValidated?.follow_up_questions ?? ensureFollowUps(draft.follow_up_questions);
   const escalationNeeded = aiValidated?.escalation_needed ?? draft.health_assessment.status === "severe_issue";
   const escalationReason = aiValidated?.escalation_reason ?? (escalationNeeded ? "Severe or unclear case may need local expert review." : "");
-  const summary = aiValidated?.summary ?? `Initial diagnosis was cross-checked against ${sources.length} trusted source(s). Evidence is ${validationStrength}.`;
+  const summary = aiValidated?.summary ?? `Live validation checked trusted sources at ${checkedAt}. Best-supported issue was ${winningIssue}. Evidence is ${validationStrength}.`;
 
   return {
     ...draft,
+    likely_issues: [best.issue, ...draft.likely_issues.filter((x) => x.name !== best.issue.name)],
     expert_validation: {
       performed: true,
       validation_strength: validationStrength,
-      source_types_used: [...new Set(sources.map((s) => s.sourceType))],
+      source_types_used: [...new Set(best.sources.map((s) => s.sourceType))],
       summary,
-      sources
+      checked_at: checkedAt,
+      freshness: "live",
+      winning_issue: winningIssue,
+      sources: best.sources
     },
     recommended_actions: recommendedActions,
     prevention_tips: preventionTips,
@@ -64,7 +86,9 @@ export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResu
 }
 
 function buildQuery(plantName: string, primaryIssue: string, symptoms: string[]) {
-  return [plantName, primaryIssue, ...symptoms].filter(Boolean).join(" ");
+  return [plantName, primaryIssue, ...symptoms, "site:.edu OR site:.gov OR rhs.org.uk OR missouribotanicalgarden.org OR apsnet.org"]
+    .filter(Boolean)
+    .join(" ");
 }
 
 async function searchTrustedSources(query: string): Promise<ValidationSource[]> {
@@ -79,7 +103,9 @@ async function searchTrustedSources(query: string): Promise<ValidationSource[]> 
       query,
       search_depth: "advanced",
       max_results: 8,
-      include_raw_content: false
+      include_raw_content: false,
+      topic: "general",
+      days: 30
     }),
     cache: "no-store"
   });
@@ -117,12 +143,15 @@ async function synthesizeValidationWithModel(draft: DiagnosisResult, sources: Va
       input: [
         {
           role: "user",
-          content: [{ type: "input_text", text: buildValidationPrompt({
-            plantName: draft.plant_identification.name,
-            observedSymptoms: draft.observed_symptoms,
-            likelyIssues: draft.likely_issues,
-            sources
-          }) }]
+          content: [{
+            type: "input_text",
+            text: buildValidationPrompt({
+              plantName: draft.plant_identification.name,
+              observedSymptoms: draft.observed_symptoms,
+              likelyIssues: draft.likely_issues,
+              sources
+            })
+          }]
         }
       ]
     });
@@ -142,11 +171,16 @@ async function synthesizeValidationWithModel(draft: DiagnosisResult, sources: Va
   }
 }
 
-function inferValidationStrength(draft: DiagnosisResult, sources: ValidationSource[]): ValidationStrength {
-  if (!sources.length) return "unavailable";
-  if (draft.likely_issues[0]?.confidence >= 8 && sources.length >= 3) return "strong";
-  if (draft.likely_issues[0]?.confidence >= 6 && sources.length >= 2) return "partial";
+function inferValidationStrengthFromCandidate(issueConfidence: number, sourceCount: number): ValidationStrength {
+  if (!sourceCount) return "unavailable";
+  if (issueConfidence >= 8 && sourceCount >= 3) return "strong";
+  if (issueConfidence >= 6 && sourceCount >= 2) return "partial";
   return "weak";
+}
+
+function scoreCandidate(issueConfidence: number, validationStrength: ValidationStrength, sourceCount: number) {
+  const strengthScore = { strong: 4, partial: 2, weak: 1, conflicting: -1, unavailable: -2 }[validationStrength];
+  return issueConfidence + strengthScore + Math.min(sourceCount, 3);
 }
 
 function conservativeActions() {

@@ -8,13 +8,14 @@ describe("scoreFinalConfidence", () => {
       health_assessment: { status: "moderate_issue", confidence: 7 },
       observed_symptoms: [],
       likely_issues: [{ name: "Fungal leaf spot", confidence: 8, reasoning: "spots" }],
-      expert_validation: { performed: true, validation_strength: "strong", source_types_used: [], summary: "good" },
+      expert_validation: { performed: true, validation_strength: "strong", source_types_used: [], summary: "good", freshness: "live" },
       recommended_actions: [],
       prevention_tips: [],
       follow_up_questions: [],
       escalation_needed: false,
       escalation_reason: "",
       image_quality: { usable: true, issues: [] },
+      second_opinion: { provider: "plantid", checked_at: "2026-03-20T11:00:00.000Z", issue_candidates: [{ name: "Fungal leaf spot", confidence: 8 }], agreement_with_primary: "high", summary: "Plant model agrees." },
       final_confidence_score_1_to_10: 0
     });
 

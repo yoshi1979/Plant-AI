@@ -1,6 +1,17 @@
 export type HealthStatus = "healthy" | "mild_stress" | "moderate_issue" | "severe_issue" | "unclear";
 export type ValidationStrength = "strong" | "partial" | "weak" | "conflicting" | "unavailable";
 
+export type PlantSecondOpinion = {
+  provider: string;
+  checked_at: string;
+  plant_name?: string;
+  plant_confidence?: number;
+  issue_candidates: { name: string; confidence: number }[];
+  health_status?: HealthStatus;
+  agreement_with_primary?: "high" | "medium" | "low";
+  summary: string;
+};
+
 export type DiagnosisResult = {
   plant_identification: { name: string; confidence: number };
   health_assessment: { status: HealthStatus; confidence: number };
@@ -11,6 +22,9 @@ export type DiagnosisResult = {
     validation_strength: ValidationStrength;
     source_types_used: string[];
     summary: string;
+    checked_at?: string;
+    freshness?: "live" | "cached" | "unknown";
+    winning_issue?: string;
     sources?: { title: string; url: string; sourceType: string; snippet: string }[];
   };
   recommended_actions: { priority: number; action: string; why: string }[];
@@ -19,6 +33,7 @@ export type DiagnosisResult = {
   escalation_needed: boolean;
   escalation_reason: string;
   image_quality: { usable: boolean; issues: string[] };
+  second_opinion?: PlantSecondOpinion;
   final_confidence_score_1_to_10: number;
 };
 
