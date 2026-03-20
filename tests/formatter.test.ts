@@ -31,4 +31,24 @@ describe("formatWhatsAppReply", () => {
     expect(reply).toContain("Confidence score: 8/10");
     expect(reply).toContain("What to do now:");
   });
+
+  it("formats Hebrew labels when requested", () => {
+    const reply = formatWhatsAppReply({
+      plant_identification: { name: "פוטוס", confidence: 8 },
+      health_assessment: { status: "mild_stress", confidence: 7 },
+      observed_symptoms: ["עלים מצהיבים"],
+      likely_issues: [{ name: "השקיית יתר", confidence: 7, reasoning: "בדיקה" }],
+      expert_validation: { performed: true, validation_strength: "partial", source_types_used: [], summary: "נבדק מול מקורות.", freshness: "live" },
+      recommended_actions: [{ priority: 1, action: "להפחית השקיה.", why: "האדמה נראית רטובה." }],
+      prevention_tips: ["לבדוק את הקרקע לפני השקיה."],
+      follow_up_questions: [],
+      escalation_needed: false,
+      escalation_reason: "",
+      image_quality: { usable: true, issues: [] },
+      final_confidence_score_1_to_10: 6
+    }, "he");
+
+    expect(reply).toContain("רמת ביטחון: 6/10");
+    expect(reply).toContain("מה לעשות עכשיו:");
+  });
 });

@@ -4,8 +4,9 @@ import { PLANT_ANALYSIS_SYSTEM_PROMPT, plantAnalysisUserPrompt } from "@/lib/pro
 import type { DiagnosisResult } from "@/lib/types";
 import { fallbackDiagnosis } from "@/lib/services/fallback";
 import { config } from "@/lib/config";
+import type { ReplyLanguage } from "@/lib/services/language";
 
-export async function analyzePlantImage(imageUrl: string, caption?: string): Promise<DiagnosisResult> {
+export async function analyzePlantImage(imageUrl: string, caption?: string, language: ReplyLanguage = "en"): Promise<DiagnosisResult> {
   if (!config.aiApiKey) {
     return fallbackDiagnosis(caption);
   }
@@ -21,7 +22,7 @@ export async function analyzePlantImage(imageUrl: string, caption?: string): Pro
         {
           role: "user",
           content: [
-            { type: "input_text", text: `${plantAnalysisUserPrompt}\n\nUser caption: ${caption ?? ""}` },
+            { type: "input_text", text: `${plantAnalysisUserPrompt(language)}\n\nUser caption: ${caption ?? ""}` },
             { type: "input_image", image_url: imageUrl }
           ]
         }

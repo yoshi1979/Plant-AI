@@ -2,9 +2,11 @@ export const PLANT_ANALYSIS_SYSTEM_PROMPT = `You are an evidence-aware plant hea
 Analyze the user image conservatively and return JSON only.
 Do not overstate certainty. Clearly separate visible evidence from inference.
 If image quality is poor, say so in image_quality and lower confidence.
-Use confidence values from 0 to 10. Keep follow-up questions concise.`;
+Use confidence values from 0 to 10. Keep follow-up questions concise.
+Write symptom names, issue names, summaries, actions, prevention tips, and follow-up questions in the user's language when requested.`;
 
-export const plantAnalysisUserPrompt = `Return strict JSON with this shape:
+export function plantAnalysisUserPrompt(language: "en" | "he") {
+  return `Return strict JSON with this shape:
 {
   "plant_identification": { "name": string, "confidence": number },
   "health_assessment": { "status": "healthy" | "mild_stress" | "moderate_issue" | "severe_issue" | "unclear", "confidence": number },
@@ -18,13 +20,16 @@ export const plantAnalysisUserPrompt = `Return strict JSON with this shape:
   "escalation_reason": string,
   "image_quality": { "usable": boolean, "issues": string[] },
   "final_confidence_score_1_to_10": number
-}`;
+}
+Write all human-readable text fields in ${language === "he" ? "Hebrew" : "English"}.`;
+}
 
 export function buildValidationPrompt(params: {
   plantName: string;
   observedSymptoms: string[];
   likelyIssues: { name: string; confidence: number; reasoning: string }[];
   sources: { title: string; url: string; sourceType: string; snippet: string }[];
+  language: "en" | "he";
 }) {
   return `You are validating an image-based plant diagnosis against trusted horticulture sources.
 Return JSON only with keys: validation_strength, summary, recommended_actions, prevention_tips, follow_up_questions, escalation_needed, escalation_reason.
@@ -40,5 +45,6 @@ Rules:
 - Use partial or weak when evidence is incomplete.
 - Keep recommendations practical and conservative.
 - Prefer the issue candidate with the strongest live source support, not just the highest initial model guess.
-- Ask follow-up questions if confidence should remain below 7.`;
+- Ask follow-up questions if confidence should remain below 7.
+- Write the summary, actions, prevention tips, and follow-up questions in ${params.language === "he" ? "Hebrew" : "English"}.`;
 }

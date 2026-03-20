@@ -2,6 +2,7 @@ import { config } from "@/lib/config";
 import { buildValidationPrompt } from "@/lib/prompts";
 import { openaiResponses, extractTextFromResponse } from "@/lib/providers/openai";
 import type { DiagnosisResult, ValidationStrength } from "@/lib/types";
+import type { ReplyLanguage } from "@/lib/services/language";
 
 const trustedDomains = [
   { domain: ".edu", sourceType: "university extension" },
@@ -20,7 +21,7 @@ type CandidateValidation = {
   score: number;
 };
 
-export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResult): Promise<DiagnosisResult> {
+export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResult, language: ReplyLanguage = "en"): Promise<DiagnosisResult> {
   const checkedAt = new Date().toISOString();
   const candidates = await Promise.all(
     draft.likely_issues.slice(0, 4).map(async (issue) => {
@@ -41,32 +42,37 @@ export async function validateDiagnosisAgainstExpertSources(draft: DiagnosisResu
         performed: true,
         validation_strength: "unavailable",
         source_types_used: [],
-        summary: "Trusted-source live validation was unavailable, so recommendations stay conservative and fresh guidance could not be confirmed.",
+        summary: language === "he"
+          ? "האימות מול מקורות חיים לא היה זמין, לכן ההמלצות נשארות שמרניות."
+          : "Trusted-source live validation was unavailable, so recommendations stay conservative and fresh guidance could not be confirmed.",
         checked_at: checkedAt,
         freshness: "unknown"
       },
-      recommended_actions: conservativeActions(),
-      prevention_tips: conservativePrevention(),
-      follow_up_questions: ensureFollowUps(draft.follow_up_questions)
+      recommended_actions: conservativeActions(language),
+      prevention_tips: conservativePrevention(language),
+      follow_up_questions: ensureFollowUps(draft.follow_up_questions, language)
     };
   }
 
-  const aiValidated = config.aiApiKey
-    ? await synthesizeValidationWithModel({ ...draft, likely_issues: [best.issue, ...draft.likely_issues.filter((x) => x.name !== best.issue.name)] }, best.sources)
-    : null;
+  const rankedDraft = { ...draft, likely_issues: [best.issue, ...draft.likely_issues.filter((x) => x.name !== best.issue.name)] };
+  const aiValidated = config.aiApiKey ? await synthesizeValidationWithModel(rankedDraft, best.sources, language) : null;
 
   const winningIssue = best.issue.name;
   const validationStrength = aiValidated?.validation_strength ?? best.validationStrength;
-  const recommendedActions = aiValidated?.recommended_actions ?? conservativeActions();
-  const preventionTips = aiValidated?.prevention_tips ?? conservativePrevention();
-  const followUpQuestions = aiValidated?.follow_up_questions ?? ensureFollowUps(draft.follow_up_questions);
+  const recommendedActions = aiValidated?.recommended_actions ?? conservativeActions(language);
+  const preventionTips = aiValidated?.prevention_tips ?? conservativePrevention(language);
+  const followUpQuestions = aiValidated?.follow_up_questions ?? ensureFollowUps(draft.follow_up_questions, language);
   const escalationNeeded = aiValidated?.escalation_needed ?? draft.health_assessment.status === "severe_issue";
-  const escalationReason = aiValidated?.escalation_reason ?? (escalationNeeded ? "Severe or unclear case may need local expert review." : "");
-  const summary = aiValidated?.summary ?? `Live validation checked trusted sources at ${checkedAt}. Best-supported issue was ${winningIssue}. Evidence is ${validationStrength}.`;
+  const escalationReason = aiValidated?.escalation_reason ?? (escalationNeeded
+    ? language === "he" ? "במקרה חמור או לא ברור מומלץ לפנות למומחה מקומי." : "Severe or unclear case may need local expert review."
+    : "");
+  const summary = aiValidated?.summary ?? (language === "he"
+    ? `בוצע אימות מול מקורות אמינים בזמן אמת ב-${checkedAt}. האבחנה שקיבלה את התמיכה החזקה ביותר הייתה ${winningIssue}.`
+    : `Live validation checked trusted sources at ${checkedAt}. Best-supported issue was ${winningIssue}. Evidence is ${validationStrength}.`);
 
   return {
     ...draft,
-    likely_issues: [best.issue, ...draft.likely_issues.filter((x) => x.name !== best.issue.name)],
+    likely_issues: rankedDraft.likely_issues,
     expert_validation: {
       performed: true,
       validation_strength: validationStrength,
@@ -136,7 +142,7 @@ async function searchTrustedSources(query: string): Promise<ValidationSource[]> 
     });
 }
 
-async function synthesizeValidationWithModel(draft: DiagnosisResult, sources: ValidationSource[]) {
+async function synthesizeValidationWithModel(draft: DiagnosisResult, sources: ValidationSource[], language: ReplyLanguage) {
   try {
     const response = await openaiResponses({
       model: config.aiTextModel,
@@ -149,7 +155,8 @@ async function synthesizeValidationWithModel(draft: DiagnosisResult, sources: Va
               plantName: draft.plant_identification.name,
               observedSymptoms: draft.observed_symptoms,
               likelyIssues: draft.likely_issues,
-              sources
+              sources,
+              language
             })
           }]
         }
@@ -183,7 +190,14 @@ function scoreCandidate(issueConfidence: number, validationStrength: ValidationS
   return issueConfidence + strengthScore + Math.min(sourceCount, 3);
 }
 
-function conservativeActions() {
+function conservativeActions(language: ReplyLanguage) {
+  if (language === "he") {
+    return [
+      { priority: 1, action: "לא לבצע שינוי טיפול גדול לפני שהאבחנה ברורה יותר.", why: "כדי לא להחמיר את המצב בגלל אבחנה לא ודאית." },
+      { priority: 2, action: "בדקו אם האדמה ספוגה, יבשה, דחוסה או עם ריח חמוץ לפני השקיה נוספת.", why: "זה עוזר להבדיל בין בעיות השקיה ושורשים." },
+      { priority: 3, action: "אם יש חשד לפטרייה או מזיקים, הרחיקו את הצמח מצמחים אחרים ועקבו אחרי התפשטות.", why: "מפחית סיכון לצמחים סמוכים." }
+    ];
+  }
   return [
     { priority: 1, action: "Avoid major treatment changes until the diagnosis is clearer.", why: "Prevents overcorrecting based on uncertain symptoms." },
     { priority: 2, action: "Check whether the soil is soggy, dry, compacted, or smells sour before watering again.", why: "Helps narrow watering and root problems safely." },
@@ -191,20 +205,17 @@ function conservativeActions() {
   ];
 }
 
-function conservativePrevention() {
-  return [
-    "Use consistent light and avoid abrupt environment changes.",
-    "Inspect leaves, stems, and soil weekly so problems are caught early."
-  ];
+function conservativePrevention(language: ReplyLanguage) {
+  return language === "he"
+    ? ["לשמור על תנאי אור יציבים ולהימנע משינויים חדים בסביבה.", "לבדוק עלים, גבעולים ואדמה פעם בשבוע כדי לזהות בעיות מוקדם."]
+    : ["Use consistent light and avoid abrupt environment changes.", "Inspect leaves, stems, and soil weekly so problems are caught early."];
 }
 
-function ensureFollowUps(existing: string[]) {
-  return existing.length ? existing.slice(0, 4) : [
-    "Is this plant indoors or outdoors?",
-    "How often do you water it?",
-    "When did this problem start?",
-    "Can you send a whole-plant photo, a close-up, and a soil photo?"
-  ];
+function ensureFollowUps(existing: string[], language: ReplyLanguage) {
+  if (existing.length) return existing.slice(0, 4);
+  return language === "he"
+    ? ["האם הצמח נמצא בתוך הבית או בחוץ?", "באיזו תדירות אתם משקים אותו?", "מתי הבעיה התחילה?", "אפשר לשלוח תמונה של כל הצמח, תקריב ותמונה של האדמה?"]
+    : ["Is this plant indoors or outdoors?", "How often do you water it?", "When did this problem start?", "Can you send a whole-plant photo, a close-up, and a soil photo?"];
 }
 
 function stripCodeFences(text: string) {

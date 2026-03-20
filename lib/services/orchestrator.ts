@@ -5,12 +5,14 @@ import { scoreFinalConfidence } from "@/lib/services/confidence";
 import { formatWhatsAppReply } from "@/lib/services/formatter";
 import { getPlantSecondOpinions } from "@/lib/providers/plant-model";
 import { applySecondOpinion } from "@/lib/services/second-opinion";
+import { detectReplyLanguage } from "@/lib/services/language";
 
 export async function runDiagnosisPipeline(input: InboundPlantCase) {
-  const initial = await analyzePlantImage(input.imageUrl, input.caption);
+  const language = detectReplyLanguage(input.caption);
+  const initial = await analyzePlantImage(input.imageUrl, input.caption, language);
   const opinions = await getPlantSecondOpinions(input.imageUrl);
   const enriched = applySecondOpinion(initial, opinions);
-  const validated = await validateDiagnosisAgainstExpertSources(enriched);
+  const validated = await validateDiagnosisAgainstExpertSources(enriched, language);
   const final = {
     ...validated,
     final_confidence_score_1_to_10: scoreFinalConfidence(validated)
@@ -18,6 +20,6 @@ export async function runDiagnosisPipeline(input: InboundPlantCase) {
 
   return {
     diagnosis: final,
-    replyText: formatWhatsAppReply(final)
+    replyText: formatWhatsAppReply(final, language)
   };
 }
