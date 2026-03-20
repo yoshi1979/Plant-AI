@@ -221,6 +221,8 @@ npm run build
 
 ## Important implementation gaps before launch
 
+<!-- deployment-trigger -->
+
 - stronger search grounding and allowlist management
 - Twilio sender/parser if using Twilio
 - dead-letter handling improvements for exhausted jobs
