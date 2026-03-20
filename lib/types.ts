@@ -30,4 +30,7 @@ export type InboundPlantCase = {
   whatsappNumber: string;
   provider: "meta" | "twilio";
   caption?: string;
+  imageMimeType?: string;
+  providerMediaId?: string;
+  imageStoragePath?: string;
 };

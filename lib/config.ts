@@ -7,6 +7,7 @@ export const config = {
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET ?? "",
+  whatsappApiVersion: process.env.WHATSAPP_API_VERSION ?? "v22.0",
   databaseUrl: process.env.DATABASE_URL ?? "",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",

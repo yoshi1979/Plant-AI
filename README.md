@@ -265,6 +265,12 @@ npm test
 This scaffold is production-oriented, but not fully production-complete until you wire:
 - real vision model calls
 - real expert web retrieval / RAG over vetted horticulture sources
+- full admin auth and role-based access
+- Twilio sender/parser if using Twilio
+- background queue for inference / retries / dead-letter handling
+- richer analytics, exports, and case override tooling
+del calls
+- real expert web retrieval / RAG over vetted horticulture sources
 - durable persistence repository methods
 - webhook signature verification
 - Twilio sender/parser if using Twilio

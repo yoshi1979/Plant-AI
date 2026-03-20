@@ -42,7 +42,7 @@ create table if not exists messages (
 create table if not exists uploaded_images (
   id uuid primary key default gen_random_uuid(),
   message_id uuid not null references messages(id) on delete cascade,
-  storage_path text not null,
+  storage_path text unique not null,
   mime_type text,
   width integer,
   height integer,
@@ -110,4 +110,6 @@ create table if not exists care_history (
 create index if not exists idx_users_whatsapp_number on users(whatsapp_number);
 create index if not exists idx_messages_provider_message_id on messages(provider_message_id);
 create index if not exists idx_diagnoses_confidence on diagnoses(confidence_score_1_to_10);
+create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);
+10);
 create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);
