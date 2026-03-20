@@ -212,7 +212,12 @@ npm run build
 
 ## Important implementation gaps before launch
 
+- stronger search grounding and allowlist management
+- Twilio sender/parser if using Twilio
+- queue retry/backoff and dead-letter handling improvements
+- production auth and operator roles
 - richer analytics, exports, and case override tooling
+cher analytics, exports, and case override tooling
 - signed/private image preview in admin
 - stronger search grounding and allowlist management
 - Twilio sender/parser if using Twilio
