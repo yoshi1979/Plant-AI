@@ -8,5 +8,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ items: await listRecentCases() });
+  const search = request.nextUrl.searchParams.get("search") ?? undefined;
+  const unresolvedOnly = request.nextUrl.searchParams.get("unresolved") === "1";
+  const maxConfidence = request.nextUrl.searchParams.get("maxConfidence");
+
+  return NextResponse.json({
+    items: await listRecentCases({
+      search,
+      unresolvedOnly,
+      maxConfidence: maxConfidence ? Number(maxConfidence) : undefined
+    })
+  });
 }

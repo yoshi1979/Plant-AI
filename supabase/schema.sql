@@ -22,7 +22,7 @@ create table if not exists plants (
 create table if not exists conversations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
-  whatsapp_thread_key text not null,
+  whatsapp_thread_key text unique not null,
   last_message_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -100,7 +100,7 @@ create table if not exists follow_up_questions (
 
 create table if not exists care_history (
   id uuid primary key default gen_random_uuid(),
-  plant_id uuid not null references plants(id) on delete cascade,
+  plant_id uuid references plants(id) on delete cascade,
   diagnosis_id uuid references diagnoses(id) on delete set null,
   note text,
   event_type text not null default 'diagnosis',
@@ -108,8 +108,7 @@ create table if not exists care_history (
 );
 
 create index if not exists idx_users_whatsapp_number on users(whatsapp_number);
+create index if not exists idx_conversations_thread_key on conversations(whatsapp_thread_key);
 create index if not exists idx_messages_provider_message_id on messages(provider_message_id);
 create index if not exists idx_diagnoses_confidence on diagnoses(confidence_score_1_to_10);
-create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);
-10);
 create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);

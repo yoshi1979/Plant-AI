@@ -12,6 +12,28 @@ export type CaseItem = {
   updatedAt: string;
 };
 
+export type CaseDetail = {
+  id: string;
+  whatsappNumber: string;
+  detectedPlantName: string | null;
+  healthStatus: string;
+  observedSymptoms: string[];
+  primaryIssue: string | null;
+  alternativeIssues: any[];
+  confidenceScore: number;
+  validationStrength: string;
+  validationSummary: string | null;
+  preventionTips: string[];
+  escalationAdvice: string | null;
+  updatedAt: string;
+  expertValidations: { sourceType: string; sourceTitle: string; sourceUrl: string; sourceSnippet: string | null }[];
+  treatmentRecommendations: { priority: number; action: string; why: string | null }[];
+  followUpQuestions: { question: string; answered: boolean }[];
+  messages: { direction: string; messageType: string; body: string | null; createdAt: string }[];
+  uploadedImages: { storagePath: string; mimeType: string | null; createdAt: string }[];
+  operatorNotes: { note: string; eventType: string; createdAt: string }[];
+};
+
 const demoCases: CaseItem[] = [
   {
     id: "demo-case-1",
@@ -25,16 +47,59 @@ const demoCases: CaseItem[] = [
   }
 ];
 
-export async function listRecentCases(): Promise<CaseItem[]> {
+const demoDetail: CaseDetail = {
+  id: "demo-case-1",
+  whatsappNumber: "+15551230000",
+  detectedPlantName: "Monstera deliciosa",
+  healthStatus: "mild_stress",
+  observedSymptoms: ["yellowing lower leaves", "mild droop"],
+  primaryIssue: "Likely overwatering with early fungal leaf spotting",
+  alternativeIssues: [{ name: "Low light stress", confidence: 4 }],
+  confidenceScore: 8,
+  validationStrength: "strong",
+  validationSummary: "Cross-checked against trusted expert sources with good alignment.",
+  preventionTips: ["Use drainage", "Let top soil partly dry"],
+  escalationAdvice: null,
+  updatedAt: new Date().toISOString(),
+  expertValidations: [
+    {
+      sourceType: "university extension",
+      sourceTitle: "Managing houseplant watering",
+      sourceUrl: "https://example.edu",
+      sourceSnippet: "Yellowing with persistently wet soil can indicate excess water."
+    }
+  ],
+  treatmentRecommendations: [
+    { priority: 1, action: "Reduce watering frequency.", why: "Wet soil suggests excess moisture." }
+  ],
+  followUpQuestions: [
+    { question: "Can you share a photo of the soil and pot?", answered: false }
+  ],
+  messages: [
+    { direction: "inbound", messageType: "image", body: "Why is it yellow?", createdAt: new Date().toISOString() },
+    { direction: "outbound", messageType: "text", body: "Plant: Monstera deliciosa...", createdAt: new Date().toISOString() }
+  ],
+  uploadedImages: [
+    { storagePath: "inbound/demo.jpg", mimeType: "image/jpeg", createdAt: new Date().toISOString() }
+  ],
+  operatorNotes: []
+};
+
+export async function listRecentCases(filters?: { search?: string; maxConfidence?: number; unresolvedOnly?: boolean }): Promise<CaseItem[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return demoCases;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("diagnoses")
-    .select("id, detected_plant_name, health_status, primary_issue, confidence_score_1_to_10, validation_strength, updated_at, conversations(user_id, users(whatsapp_number))")
+    .select("id, detected_plant_name, health_status, primary_issue, confidence_score_1_to_10, validation_strength, updated_at, conversations!inner(users!inner(whatsapp_number))")
     .order("updated_at", { ascending: false })
     .limit(50);
 
+  if (typeof filters?.maxConfidence === "number") query = query.lte("confidence_score_1_to_10", filters.maxConfidence);
+  if (filters?.unresolvedOnly) query = query.in("validation_strength", ["weak", "conflicting", "unavailable", "partial"]);
+  if (filters?.search) query = query.or(`detected_plant_name.ilike.%${filters.search}%,primary_issue.ilike.%${filters.search}%`);
+
+  const { data, error } = await query;
   if (error || !data) return demoCases;
 
   return data.map((row: any) => ({
@@ -49,26 +114,94 @@ export async function listRecentCases(): Promise<CaseItem[]> {
   }));
 }
 
+export async function getCaseDetail(caseId: string): Promise<CaseDetail | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return demoDetail.id === caseId ? demoDetail : null;
+
+  const { data: diagnosis } = await supabase
+    .from("diagnoses")
+    .select("*, conversations!inner(id, users!inner(whatsapp_number))")
+    .eq("id", caseId)
+    .maybeSingle();
+
+  if (!diagnosis) return null;
+
+  const conversationId = diagnosis.conversation_id;
+  const [{ data: validations }, { data: treatments }, { data: followUps }, { data: messages }, { data: images }, { data: notes }] = await Promise.all([
+    supabase.from("expert_validations").select("source_type, source_title, source_url, source_snippet").eq("diagnosis_id", caseId),
+    supabase.from("treatment_recommendations").select("priority, action, why").eq("diagnosis_id", caseId).order("priority"),
+    supabase.from("follow_up_questions").select("question, answered").eq("diagnosis_id", caseId),
+    supabase.from("messages").select("direction, message_type, body, created_at").eq("conversation_id", conversationId).order("created_at"),
+    supabase.from("uploaded_images").select("storage_path, mime_type, created_at, messages!inner(conversation_id)").eq("messages.conversation_id", conversationId),
+    supabase.from("care_history").select("note, event_type, created_at").eq("diagnosis_id", caseId).order("created_at", { ascending: false })
+  ]);
+
+  return {
+    id: diagnosis.id,
+    whatsappNumber: diagnosis.conversations?.users?.whatsapp_number ?? "unknown",
+    detectedPlantName: diagnosis.detected_plant_name,
+    healthStatus: diagnosis.health_status,
+    observedSymptoms: diagnosis.observed_symptoms ?? [],
+    primaryIssue: diagnosis.primary_issue,
+    alternativeIssues: diagnosis.alternative_issues ?? [],
+    confidenceScore: diagnosis.confidence_score_1_to_10,
+    validationStrength: diagnosis.validation_strength,
+    validationSummary: diagnosis.expert_validation_summary,
+    preventionTips: diagnosis.prevention_tips ?? [],
+    escalationAdvice: diagnosis.escalation_advice,
+    updatedAt: diagnosis.updated_at,
+    expertValidations: (validations ?? []).map((x: any) => ({ sourceType: x.source_type, sourceTitle: x.source_title, sourceUrl: x.source_url, sourceSnippet: x.source_snippet })),
+    treatmentRecommendations: (treatments ?? []).map((x: any) => ({ priority: x.priority, action: x.action, why: x.why })),
+    followUpQuestions: (followUps ?? []).map((x: any) => ({ question: x.question, answered: x.answered })),
+    messages: (messages ?? []).map((x: any) => ({ direction: x.direction, messageType: x.message_type, body: x.body, createdAt: x.created_at })),
+    uploadedImages: (images ?? []).map((x: any) => ({ storagePath: x.storage_path, mimeType: x.mime_type, createdAt: x.created_at })),
+    operatorNotes: (notes ?? []).map((x: any) => ({ note: x.note, eventType: x.event_type, createdAt: x.created_at }))
+  };
+}
+
+export async function addOperatorNote(caseId: string, note: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: true };
+
+  const { data: diagnosis } = await supabase.from("diagnoses").select("plant_id").eq("id", caseId).maybeSingle();
+  const { error } = await supabase.from("care_history").insert({
+    diagnosis_id: caseId,
+    plant_id: diagnosis?.plant_id,
+    note,
+    event_type: "operator_note"
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function overrideDiagnosis(caseId: string, patch: { primaryIssue?: string; healthStatus?: string; confidenceScore?: number; validationSummary?: string }) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: true };
+
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.primaryIssue !== undefined) update.primary_issue = patch.primaryIssue;
+  if (patch.healthStatus !== undefined) update.health_status = patch.healthStatus;
+  if (patch.confidenceScore !== undefined) update.confidence_score_1_to_10 = patch.confidenceScore;
+  if (patch.validationSummary !== undefined) update.expert_validation_summary = patch.validationSummary;
+
+  const { error } = await supabase.from("diagnoses").update(update).eq("id", caseId);
+  if (error) throw new Error(error.message);
+
+  await addOperatorNote(caseId, `Diagnosis overridden by operator. Primary issue: ${patch.primaryIssue ?? "unchanged"}. Confidence: ${patch.confidenceScore ?? "unchanged"}.`);
+  return { ok: true };
+}
+
 export async function findMessageByProviderId(providerMessageId: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
-
-  const { data } = await supabase
-    .from("messages")
-    .select("id, provider_message_id")
-    .eq("provider_message_id", providerMessageId)
-    .maybeSingle();
-
+  const { data } = await supabase.from("messages").select("id, provider_message_id").eq("provider_message_id", providerMessageId).maybeSingle();
   return data;
 }
 
 export async function ensureUserAndConversation(whatsappNumber: string, conversationKey: string, displayName?: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    return {
-      userId: `demo-user-${whatsappNumber}`,
-      conversationId: `demo-conversation-${conversationKey}`
-    };
+    return { userId: `demo-user-${whatsappNumber}`, conversationId: `demo-conversation-${conversationKey}` };
   }
 
   const { data: user, error: userError } = await supabase
@@ -76,7 +209,6 @@ export async function ensureUserAndConversation(whatsappNumber: string, conversa
     .upsert({ whatsapp_number: whatsappNumber, display_name: displayName, updated_at: new Date().toISOString() }, { onConflict: "whatsapp_number" })
     .select("id")
     .single();
-
   if (userError || !user) throw new Error(userError?.message ?? "Unable to upsert user");
 
   const { data: conversation, error: conversationError } = await supabase
@@ -84,18 +216,12 @@ export async function ensureUserAndConversation(whatsappNumber: string, conversa
     .upsert({ user_id: user.id, whatsapp_thread_key: conversationKey, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: "whatsapp_thread_key" })
     .select("id")
     .single();
-
   if (conversationError || !conversation) throw new Error(conversationError?.message ?? "Unable to upsert conversation");
 
   return { userId: user.id, conversationId: conversation.id };
 }
 
-export async function createInboundMessage(params: {
-  conversationId: string;
-  providerMessageId: string;
-  body?: string;
-  metadata?: Record<string, unknown>;
-}) {
+export async function createInboundMessage(params: { conversationId: string; providerMessageId: string; body?: string; metadata?: Record<string, unknown> }) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { id: `demo-message-${params.providerMessageId}` };
 
@@ -116,12 +242,7 @@ export async function createInboundMessage(params: {
   return data;
 }
 
-export async function createUploadedImage(params: {
-  messageId: string;
-  storagePath: string;
-  mimeType?: string;
-  sha256?: string;
-}) {
+export async function createUploadedImage(params: { messageId: string; storagePath: string; mimeType?: string; sha256?: string }) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { id: `demo-image-${params.messageId}` };
 
@@ -216,10 +337,7 @@ export async function persistDiagnosisCase(input: InboundPlantCase, diagnosis: D
 
   if (diagnosis.follow_up_questions.length) {
     await supabase.from("follow_up_questions").insert(
-      diagnosis.follow_up_questions.map((question) => ({
-        diagnosis_id: diagnosisRow.id,
-        question
-      }))
+      diagnosis.follow_up_questions.map((question) => ({ diagnosis_id: diagnosisRow.id, question }))
     );
   }
 
