@@ -44,8 +44,9 @@ Copy from `.env.example` and set at minimum:
    - `/api/health`
    - `/api/webhooks/whatsapp`
    - `/admin/login`
-6. Vercel cron will hit `/api/internal/queue/process` every 2 minutes via `vercel.json`.
-7. Add `QUEUE_SECRET` to Vercel env and send it as `x-queue-secret` if you trigger the worker manually.
+6. On Hobby, keep `PROCESS_ASYNC=false` and process requests inline.
+7. On Pro, you can re-enable scheduled queue processing.
+8. Add `QUEUE_SECRET` to Vercel env if you want to trigger the worker manually.
 
 ## Meta WhatsApp setup
 
