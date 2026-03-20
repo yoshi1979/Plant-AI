@@ -17,5 +17,10 @@ export const config = {
   aiVisionModel: process.env.AI_VISION_MODEL ?? "gpt-4.1-mini",
   aiTextModel: process.env.AI_TEXT_MODEL ?? "gpt-4.1-mini",
   searchProvider: process.env.SEARCH_PROVIDER ?? "tavily",
-  searchApiKey: process.env.SEARCH_API_KEY ?? ""
+  searchApiKey: process.env.SEARCH_API_KEY ?? "",
+  rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60000),
+  rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 20),
+  queueSecret: process.env.QUEUE_SECRET ?? "queue-secret",
+  processAsync: process.env.PROCESS_ASYNC === "true",
+  appEnv: process.env.NODE_ENV ?? "development"
 };

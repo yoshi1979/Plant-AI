@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
-import { sendWhatsAppText } from "@/lib/providers/whatsapp";
 import { downloadMetaMedia, getMetaMediaUrl, verifyMetaSignature } from "@/lib/providers/meta-whatsapp";
-import { findMessageByProviderId, persistDiagnosisCase } from "@/lib/repositories/cases";
-import { runDiagnosisPipeline } from "@/lib/services/orchestrator";
+import { archiveWebhookEvent, findMessageByProviderId } from "@/lib/repositories/cases";
 import { storeInboundImage } from "@/lib/services/storage";
 import type { InboundPlantCase } from "@/lib/types";
+import { checkRateLimit } from "@/lib/services/rate-limit";
+import { enqueueDiagnosisJob } from "@/lib/services/queue";
+import { processDiagnosisCase } from "@/lib/services/processor";
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams;
@@ -29,10 +30,16 @@ export async function POST(request: NextRequest) {
   }
 
   const body = JSON.parse(rawBody);
-  const inbound = extractInboundImage(body);
+  await archiveWebhookEvent({ provider: "meta", eventType: "webhook", payload: body });
 
+  const inbound = extractInboundImage(body);
   if (!inbound) {
     return NextResponse.json({ ok: true, ignored: true, reason: "No supported image message" });
+  }
+
+  const rate = checkRateLimit(inbound.whatsappNumber, config.rateLimitWindowMs, config.rateLimitMaxRequests);
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "Rate limited" }, { status: 429, headers: { "Retry-After": String(Math.ceil((rate.resetAt - Date.now()) / 1000)) } });
   }
 
   const existing = await findMessageByProviderId(inbound.messageId);
@@ -41,10 +48,13 @@ export async function POST(request: NextRequest) {
   }
 
   const hydrated = await hydrateMetaImage(inbound);
-  const { diagnosis, replyText } = await runDiagnosisPipeline(hydrated);
-  await persistDiagnosisCase(hydrated, diagnosis, replyText);
-  await sendWhatsAppText(hydrated.whatsappNumber, replyText);
 
+  if (config.processAsync) {
+    const job = await enqueueDiagnosisJob({ inbound: hydrated });
+    return NextResponse.json({ ok: true, queued: job.queued, jobId: job.id });
+  }
+
+  const { diagnosis } = await processDiagnosisCase(hydrated);
   return NextResponse.json({ ok: true, diagnosis });
 }
 

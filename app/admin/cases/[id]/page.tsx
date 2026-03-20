@@ -62,7 +62,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
           </ul>
           <h2>Uploaded images</h2>
           <ul>
-            {detail.uploadedImages.map((x) => <li key={x.storagePath}>{x.storagePath} ({x.mimeType ?? "unknown"})</li>)}
+            {detail.uploadedImages.map((x) => <li key={x.storagePath}>{x.signedUrl ? <a href={x.signedUrl} target="_blank">Open image</a> : x.storagePath} ({x.mimeType ?? "unknown"})</li>)}
           </ul>
         </div>
       </div>

@@ -107,8 +107,29 @@ create table if not exists care_history (
   created_at timestamptz not null default now()
 );
 
+create table if not exists webhook_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  event_type text not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists job_queue (
+  id uuid primary key default gen_random_uuid(),
+  job_type text not null,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'pending',
+  attempts integer not null default 0,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_users_whatsapp_number on users(whatsapp_number);
 create index if not exists idx_conversations_thread_key on conversations(whatsapp_thread_key);
 create index if not exists idx_messages_provider_message_id on messages(provider_message_id);
 create index if not exists idx_diagnoses_confidence on diagnoses(confidence_score_1_to_10);
 create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);
+create index if not exists idx_webhook_events_created_at on webhook_events(created_at desc);
+create index if not exists idx_job_queue_status on job_queue(status, created_at);

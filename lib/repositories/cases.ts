@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/db";
+import { getSignedImageUrl } from "@/lib/services/storage";
 import type { DiagnosisResult, InboundPlantCase } from "@/lib/types";
 
 export type CaseItem = {
@@ -30,7 +31,7 @@ export type CaseDetail = {
   treatmentRecommendations: { priority: number; action: string; why: string | null }[];
   followUpQuestions: { question: string; answered: boolean }[];
   messages: { direction: string; messageType: string; body: string | null; createdAt: string }[];
-  uploadedImages: { storagePath: string; mimeType: string | null; createdAt: string }[];
+  uploadedImages: { storagePath: string; mimeType: string | null; createdAt: string; signedUrl?: string | null }[];
   operatorNotes: { note: string; eventType: string; createdAt: string }[];
 };
 
@@ -80,7 +81,7 @@ const demoDetail: CaseDetail = {
     { direction: "outbound", messageType: "text", body: "Plant: Monstera deliciosa...", createdAt: new Date().toISOString() }
   ],
   uploadedImages: [
-    { storagePath: "inbound/demo.jpg", mimeType: "image/jpeg", createdAt: new Date().toISOString() }
+    { storagePath: "inbound/demo.jpg", mimeType: "image/jpeg", createdAt: new Date().toISOString(), signedUrl: null }
   ],
   operatorNotes: []
 };
@@ -136,6 +137,13 @@ export async function getCaseDetail(caseId: string): Promise<CaseDetail | null> 
     supabase.from("care_history").select("note, event_type, created_at").eq("diagnosis_id", caseId).order("created_at", { ascending: false })
   ]);
 
+  const uploadedImages = await Promise.all((images ?? []).map(async (x: any) => ({
+    storagePath: x.storage_path,
+    mimeType: x.mime_type,
+    createdAt: x.created_at,
+    signedUrl: await getSignedImageUrl(x.storage_path)
+  })));
+
   return {
     id: diagnosis.id,
     whatsappNumber: diagnosis.conversations?.users?.whatsapp_number ?? "unknown",
@@ -154,7 +162,7 @@ export async function getCaseDetail(caseId: string): Promise<CaseDetail | null> 
     treatmentRecommendations: (treatments ?? []).map((x: any) => ({ priority: x.priority, action: x.action, why: x.why })),
     followUpQuestions: (followUps ?? []).map((x: any) => ({ question: x.question, answered: x.answered })),
     messages: (messages ?? []).map((x: any) => ({ direction: x.direction, messageType: x.message_type, body: x.body, createdAt: x.created_at })),
-    uploadedImages: (images ?? []).map((x: any) => ({ storagePath: x.storage_path, mimeType: x.mime_type, createdAt: x.created_at })),
+    uploadedImages,
     operatorNotes: (notes ?? []).map((x: any) => ({ note: x.note, eventType: x.event_type, createdAt: x.created_at }))
   };
 }
@@ -259,6 +267,18 @@ export async function createUploadedImage(params: { messageId: string; storagePa
 
   if (error || !data) throw new Error(error?.message ?? "Unable to insert uploaded image");
   return data;
+}
+
+export async function archiveWebhookEvent(params: { provider: string; eventType: string; payload: unknown }) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: true };
+  const { error } = await supabase.from("webhook_events").insert({
+    provider: params.provider,
+    event_type: params.eventType,
+    payload: params.payload
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
 }
 
 export async function persistDiagnosisCase(input: InboundPlantCase, diagnosis: DiagnosisResult, replyText: string) {

@@ -177,18 +177,20 @@ Implemented now:
 - verify Meta webhook token
 - validate X-Hub-Signature-256
 - provider message id idempotency check
+- basic per-sender rate limiting
+- raw webhook event archival
 - persist inbound/outbound message records
 - persist diagnosis case records
 - upload inbound media into Supabase Storage when configured
+- signed image URLs for admin review
+- optional DB-backed async job queue path
 
 Still recommended before launch:
-- signed/private media viewing
 - stronger admin auth / RBAC
-- rate limiting per sender
 - scrub secrets and PII from logs
 - retry-safe outbound delivery records with provider receipts
-- raw webhook event archival
-- background queue for inference / retries
+- full worker scheduling / retries with backoff
+- richer operator analytics and exports
 
 ## Test
 

@@ -30,6 +30,18 @@ export async function storeInboundImage(params: {
   return { path, sha256: hash, stored: true };
 }
 
+export async function getSignedImageUrl(storagePath: string, expiresIn = 3600) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.storage
+    .from(config.supabaseBucket)
+    .createSignedUrl(storagePath, expiresIn);
+
+  if (error) return null;
+  return data.signedUrl;
+}
+
 function extensionForMime(mimeType?: string) {
   switch (mimeType) {
     case "image/png": return "png";
