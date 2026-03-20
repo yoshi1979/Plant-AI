@@ -147,6 +147,7 @@ npm run dev
 Open:
 - app: http://localhost:3000
 - admin: http://localhost:3000/admin
+- setup: http://localhost:3000/setup
 - health: http://localhost:3000/api/health
 
 ## Database setup

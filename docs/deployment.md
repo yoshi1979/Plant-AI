@@ -42,6 +42,8 @@ Copy from `.env.example` and set at minimum:
 4. Deploy.
 5. Confirm these routes are live:
    - `/api/health`
+   - `/api/setup`
+   - `/setup`
    - `/api/webhooks/whatsapp`
    - `/admin/login`
 6. On Hobby, keep `PROCESS_ASYNC=false` and process requests inline.

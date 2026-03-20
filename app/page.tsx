@@ -9,7 +9,7 @@ export default function HomePage() {
           confidence scoring, case history, and an admin dashboard.
         </p>
         <p>
-          Start with <code>/api/webhooks/whatsapp</code> for inbound messages and <code>/admin</code> for review.
+          Start with <code>/api/webhooks/whatsapp</code> for inbound messages, <code>/admin</code> for review, and <code>/setup</code> for deployment readiness.
         </p>
       </div>
 
