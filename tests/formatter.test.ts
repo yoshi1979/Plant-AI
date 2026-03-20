@@ -24,6 +24,7 @@ describe("formatWhatsAppReply", () => {
       escalation_reason: "",
       image_quality: { usable: true, issues: [] },
       second_opinion: { provider: "plantid", checked_at: "2026-03-20T11:00:00.000Z", issue_candidates: [{ name: "Overwatering", confidence: 8 }], agreement_with_primary: "high", summary: "Plant model agrees." },
+      ensemble_opinion: { providers: [{ provider: "plantid", checked_at: "2026-03-20T11:00:00.000Z", issue_candidates: [{ name: "Overwatering", confidence: 8 }], summary: "Plant model agrees." }], agreement_with_primary: "high", consensus_issue_candidates: [{ name: "Overwatering", confidence: 8 }], summary: "Ensemble agrees." },
       final_confidence_score_1_to_10: 8
     });
 

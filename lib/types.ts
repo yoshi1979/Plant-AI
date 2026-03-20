@@ -12,6 +12,14 @@ export type PlantSecondOpinion = {
   summary: string;
 };
 
+export type PlantEnsembleOpinion = {
+  providers: PlantSecondOpinion[];
+  agreement_with_primary: "high" | "medium" | "low";
+  consensus_plant_name?: string;
+  consensus_issue_candidates: { name: string; confidence: number }[];
+  summary: string;
+};
+
 export type DiagnosisResult = {
   plant_identification: { name: string; confidence: number };
   health_assessment: { status: HealthStatus; confidence: number };
@@ -34,6 +42,7 @@ export type DiagnosisResult = {
   escalation_reason: string;
   image_quality: { usable: boolean; issues: string[] };
   second_opinion?: PlantSecondOpinion;
+  ensemble_opinion?: PlantEnsembleOpinion;
   final_confidence_score_1_to_10: number;
 };
 

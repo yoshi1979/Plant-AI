@@ -30,6 +30,7 @@ export function fallbackDiagnosis(caption?: string): DiagnosisResult {
     escalation_reason: "",
     image_quality: { usable: true, issues: [] },
     second_opinion: undefined,
+    ensemble_opinion: undefined,
     final_confidence_score_1_to_10: 4
   };
 }

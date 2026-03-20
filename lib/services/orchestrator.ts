@@ -3,13 +3,13 @@ import { analyzePlantImage } from "@/lib/services/vision";
 import { validateDiagnosisAgainstExpertSources } from "@/lib/services/validation";
 import { scoreFinalConfidence } from "@/lib/services/confidence";
 import { formatWhatsAppReply } from "@/lib/services/formatter";
-import { getPlantSecondOpinion } from "@/lib/providers/plant-model";
+import { getPlantSecondOpinions } from "@/lib/providers/plant-model";
 import { applySecondOpinion } from "@/lib/services/second-opinion";
 
 export async function runDiagnosisPipeline(input: InboundPlantCase) {
   const initial = await analyzePlantImage(input.imageUrl, input.caption);
-  const secondOpinion = await getPlantSecondOpinion(input.imageUrl);
-  const enriched = applySecondOpinion(initial, secondOpinion);
+  const opinions = await getPlantSecondOpinions(input.imageUrl);
+  const enriched = applySecondOpinion(initial, opinions);
   const validated = await validateDiagnosisAgainstExpertSources(enriched);
   const final = {
     ...validated,

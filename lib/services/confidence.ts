@@ -13,10 +13,10 @@ export function scoreFinalConfidence(result: DiagnosisResult): number {
     unavailable: -2
   }[result.expert_validation.validation_strength];
   const secondOpinionBonus = {
-    high: 1,
-    medium: 0,
+    high: 2,
+    medium: 1,
     low: -1
-  }[result.second_opinion?.agreement_with_primary ?? "medium"];
+  }[result.ensemble_opinion?.agreement_with_primary ?? result.second_opinion?.agreement_with_primary ?? "medium"];
 
   const raw = Math.round((plant + health + issue) / 3 + validationBonus + secondOpinionBonus - imagePenalty);
   return Math.max(1, Math.min(10, raw));
