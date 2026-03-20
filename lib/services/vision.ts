@@ -1,36 +1,41 @@
+import { diagnosisSchema } from "@/lib/schemas";
+import { openaiResponses, extractTextFromResponse } from "@/lib/providers/openai";
+import { PLANT_ANALYSIS_SYSTEM_PROMPT, plantAnalysisUserPrompt } from "@/lib/prompts";
 import type { DiagnosisResult } from "@/lib/types";
+import { fallbackDiagnosis } from "@/lib/services/fallback";
+import { config } from "@/lib/config";
 
 export async function analyzePlantImage(imageUrl: string, caption?: string): Promise<DiagnosisResult> {
-  // Production hook: replace with OpenAI/Anthropic/Gemini vision call.
-  // This scaffold returns deterministic structured output so the rest of the system is testable.
-  const symptomHints = caption?.toLowerCase().includes("yellow")
-    ? ["yellowing leaves", "mild droop", "moist soil visible"]
-    : ["leaf discoloration", "localized browning", "possible stress pattern"];
+  if (!config.aiApiKey) {
+    return fallbackDiagnosis(caption);
+  }
 
-  return {
-    plant_identification: { name: "Unknown plant", confidence: 4 },
-    health_assessment: { status: "unclear", confidence: 4 },
-    observed_symptoms: symptomHints,
-    likely_issues: [
-      { name: "Possible overwatering", confidence: 5, reasoning: "Leaf yellowing plus droop can align with excess moisture." },
-      { name: "Possible insufficient light", confidence: 4, reasoning: "Color loss may also reflect suboptimal light conditions." }
-    ],
-    expert_validation: {
-      performed: false,
-      validation_strength: "unavailable",
-      source_types_used: [],
-      summary: "Validation has not run yet."
-    },
-    recommended_actions: [],
-    prevention_tips: [],
-    follow_up_questions: [
-      "Is this plant indoors or outdoors?",
-      "How often do you water it?",
-      "Can you send one photo of the whole plant and one close-up of the damaged area?"
-    ],
-    escalation_needed: false,
-    escalation_reason: "",
-    image_quality: { usable: true, issues: [] },
-    final_confidence_score_1_to_10: 4
-  };
+  try {
+    const payload = await openaiResponses({
+      model: config.aiVisionModel,
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: PLANT_ANALYSIS_SYSTEM_PROMPT }]
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: `${plantAnalysisUserPrompt}\n\nUser caption: ${caption ?? ""}` },
+            { type: "input_image", image_url: imageUrl }
+          ]
+        }
+      ]
+    });
+
+    const text = extractTextFromResponse(payload).trim();
+    const parsed = diagnosisSchema.parse(JSON.parse(stripCodeFences(text)));
+    return parsed as DiagnosisResult;
+  } catch {
+    return fallbackDiagnosis(caption);
+  }
+}
+
+function stripCodeFences(text: string) {
+  return text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "").trim();
 }

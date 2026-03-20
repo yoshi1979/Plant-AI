@@ -11,5 +11,11 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-  supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "plant-images"
+  supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "plant-images",
+  aiProvider: process.env.AI_PROVIDER ?? "openai",
+  aiApiKey: process.env.AI_API_KEY ?? "",
+  aiVisionModel: process.env.AI_VISION_MODEL ?? "gpt-4.1-mini",
+  aiTextModel: process.env.AI_TEXT_MODEL ?? "gpt-4.1-mini",
+  searchProvider: process.env.SEARCH_PROVIDER ?? "tavily",
+  searchApiKey: process.env.SEARCH_API_KEY ?? ""
 };
