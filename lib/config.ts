@@ -22,5 +22,8 @@ export const config = {
   rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 20),
   queueSecret: process.env.QUEUE_SECRET ?? "queue-secret",
   processAsync: process.env.PROCESS_ASYNC === "true",
+  queueMaxAttempts: Number(process.env.QUEUE_MAX_ATTEMPTS ?? 5),
+  queueRetryBaseMs: Number(process.env.QUEUE_RETRY_BASE_MS ?? 30000),
+  logLevel: process.env.LOG_LEVEL ?? "info",
   appEnv: process.env.NODE_ENV ?? "development"
 };

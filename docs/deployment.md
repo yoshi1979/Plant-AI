@@ -83,6 +83,9 @@ curl -X POST \
 
 ## Railway / Render notes
 
+The app now supports simple retry/backoff inside `job_queue` using `run_after`, `QUEUE_MAX_ATTEMPTS`, and `QUEUE_RETRY_BASE_MS`.
+
+
 You can also deploy the app to Railway or Render using the included config files.
 
 - Railway: uses `railway.json`

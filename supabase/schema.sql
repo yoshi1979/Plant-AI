@@ -122,6 +122,7 @@ create table if not exists job_queue (
   status text not null default 'pending',
   attempts integer not null default 0,
   last_error text,
+  run_after timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -133,3 +134,4 @@ create index if not exists idx_diagnoses_confidence on diagnoses(confidence_scor
 create index if not exists idx_diagnoses_created_at on diagnoses(created_at desc);
 create index if not exists idx_webhook_events_created_at on webhook_events(created_at desc);
 create index if not exists idx_job_queue_status on job_queue(status, created_at);
+create index if not exists idx_job_queue_run_after on job_queue(status, run_after);

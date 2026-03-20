@@ -214,7 +214,7 @@ npm run build
 
 - stronger search grounding and allowlist management
 - Twilio sender/parser if using Twilio
-- queue retry/backoff and dead-letter handling improvements
+- dead-letter handling improvements for exhausted jobs
 - production auth and operator roles
 - richer analytics, exports, and case override tooling
 cher analytics, exports, and case override tooling

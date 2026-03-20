@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(adminCookieName, createAdminSessionValue(), {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: config.appEnv === "production",
     path: "/",
     maxAge: 60 * 60 * 12
   });
