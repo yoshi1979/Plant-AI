@@ -1,0 +1,21 @@
+export const config = {
+  appName: process.env.NEXT_PUBLIC_APP_NAME ?? "Plant Health Assistant",
+  baseUrl: process.env.APP_BASE_URL ?? "http://localhost:3000",
+  adminApiKey: process.env.ADMIN_API_KEY ?? "dev-admin-key",
+  provider: (process.env.WHATSAPP_PROVIDER ?? "meta") as "meta" | "twilio",
+  verifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? "verify-token",
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET ?? "",
+  whatsappApiVersion: process.env.WHATSAPP_API_VERSION ?? "v22.0",
+  databaseUrl: process.env.DATABASE_URL ?? "",
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "plant-images",
+  aiProvider: process.env.AI_PROVIDER ?? "openai",
+  aiApiKey: process.env.AI_API_KEY ?? "",
+  aiVisionModel: process.env.AI_VISION_MODEL ?? "gpt-4.1-mini",
+  aiTextModel: process.env.AI_TEXT_MODEL ?? "gpt-4.1-mini",
+  searchProvider: process.env.SEARCH_PROVIDER ?? "tavily",
+  searchApiKey: process.env.SEARCH_API_KEY ?? ""
+};
